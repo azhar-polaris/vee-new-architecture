@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "common"
+version = "0.1.0"
+description = "Shared models and utilities"
+authors = ["Azhar <azhar@polarisgrids.com>"]
+packages = [{ include = "common" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.11.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
