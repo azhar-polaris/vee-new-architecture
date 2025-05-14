@@ -9,7 +9,7 @@ router = APIRouter(prefix="/kafka", tags=["Kafka"])
 def test_kafka():
     try:
         producer = KafkaProducerSingleton.get_instance()
-        producer.send_bulk_random_messages(topic="test-topic", count=200000)
+        producer.send_bulk_random_messages(topic="test-topic", count=2000)
         return { "test": "successful" }
     except KafkaException as ke:
         # Specific Kafka error

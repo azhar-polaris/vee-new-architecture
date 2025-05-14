@@ -70,7 +70,6 @@ class KafkaConsumerClass:
                 batch = self._poll_batch()
 
                 if not batch:
-                    print("🕓 Waiting for more messages...")
                     time.sleep(0.5)
                     continue
 
