@@ -7,7 +7,7 @@ class KafkaConsumerClass:
         broker,
         group_id='python-consumer-group',
         topic='test',
-        batch_size=100,
+        batch_size=1000,
         batch_timeout=2.0,
         auto_commit=True,
         strict_batch_size=False,
@@ -70,13 +70,15 @@ class KafkaConsumerClass:
                 batch = self._poll_batch()
 
                 if not batch:
+                    print("🕓 Waiting for more messages...")
+                    time.sleep(0.5)
                     continue
 
                 batch_count += 1
                 total_messages += len(batch)
 
                 print(f"\n[Batch {batch_count}] Received {len(batch)} messages. Total so far: {total_messages}")
-                for idx, msg in enumerate(batch):
+                for idx, msg in enumerate(batch, 1):
                     print(idx, msg)
 
                 if self.auto_commit:
@@ -88,18 +90,3 @@ class KafkaConsumerClass:
             print(f"Kafka error: {e}")
         finally:
             self.consumer.close()
-
-
-class KafkaConsumerSingleton:
-    _instance = None
-
-    @staticmethod
-    def initialize(config):
-        if KafkaConsumerSingleton._instance is None:
-            KafkaConsumerSingleton._instance = KafkaConsumerClass(**config)
-
-    @staticmethod
-    def get_instance():
-        if KafkaConsumerSingleton._instance is None:
-            raise Exception("KafkaConsumerSingleton is not initialized.")
-        return KafkaConsumerSingleton._instance

@@ -1,10 +1,10 @@
 import sys
 import os
-
-# Add the `src/` directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-
 from fastapi import FastAPI
+# Add the `src/` directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../app')))
+
+from confluent_kafka import KafkaException # type: ignore
 from routes.validation_router import router as validation_router
 from routes.kafka_router import router as kafka_router
 from models.kafka_producer import KafkaProducerSingleton
@@ -18,9 +18,23 @@ app = FastAPI(title="Validation Service")
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize the Kafka producer when the app starts."""
-    KafkaProducerSingleton.initialize(KAFKA_CONFIG)
-    print("Kafka producer initialized.")
+    """Initialize the Kafka producer and verify Kafka connection."""
+    try:
+        KafkaProducerSingleton.initialize(KAFKA_CONFIG)
+        print("✅ Kafka producer initialized.")
+
+        # ✅ Send a test message to verify Kafka is reachable
+        producer = KafkaProducerSingleton.get_instance()
+        producer.send_message("health-check", key="startup", value="Kafka is up")
+        producer.flush()
+
+        print("✅ Kafka connection verified: health-check message sent.")
+    except KafkaException as ke:
+        print("❌ KafkaException while sending test message:", ke)
+        raise
+    except Exception as e:
+        print("❌ Failed to initialize Kafka producer:", e)
+        raise
 
 
 @app.on_event("shutdown")
