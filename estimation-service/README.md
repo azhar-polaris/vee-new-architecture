@@ -14,4 +14,4 @@ To install the validation service, follow these steps:
 2. To run the validation service locally, use the following command:
 
    ```bash
-   poetry run uvicorn app.main:app --reload
+   poetry run uvicorn app.main:app

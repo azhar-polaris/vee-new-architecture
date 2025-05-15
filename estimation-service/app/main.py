@@ -1,55 +1,70 @@
+import logging
 import sys
 import os
 import threading
+from fastapi import FastAPI # type: ignore
 
 # Add the `src/` directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../app')))
 
-from fastapi import FastAPI
-from routes.estimation_router import router as estimation_router
-from models.kafka_consumer import KafkaConsumerClass
-from confluent_kafka import KafkaException  # type: ignore
-
-KAFKA_CONSUMER_CONFIG = {
-    "broker": "localhost:9092",
-    "group_id": "estimation-group",
-    "topic": "test-topic",
-    "batch_size": 1000,
-    "batch_timeout": 2.0,
-    "strict_batch_size": False
-}
+from router.estimation_router import router as estimation_router
+from models.kafka_consumer.consumer_config import KafkaConsumerConfig
+from models.kafka_consumer.consumer_factory import KafkaConsumerFactory
+from models.kafka_consumer.consumer_utility import KafkaConsumerUtility
 
 app = FastAPI(title="Estimation Service")
 
+logger = logging.getLogger("KafkaTest")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
+
+# Shared state for threads and cancel event
+app.state.cancel_event = threading.Event()
+app.state.consumer_thread = None
+
+# Dummy message processor
+def process_messages(cancel_event, messages):
+    for msg in messages:
+        print(f"Received message: {msg.value().decode()} from {msg.topic()}")
+
 @app.on_event("startup")
-def startup_event():
-    global test_topic_consumer, health_check_consumer
-    try:
-        test_topic_consumer = KafkaConsumerClass(**KAFKA_CONSUMER_CONFIG)
+def start_kafka_consumer():
+    config = KafkaConsumerConfig(
+        bootstrap_servers="localhost:9092",
+        consumer_group_id="test-consumer-group",
+        topics=["test-topic"],
+        batch_size=1000,
+        max_wait_ms=150,
+        num_workers=10,
+        channel_buffer_size=30,
+        security_protocol=None,
+        sasl_username=None,
+        sasl_password=None,
+        sasl_mechanism=None
+    )
 
-        health_check_config = {**KAFKA_CONSUMER_CONFIG, "topic": 'health-check'}
-        health_check_consumer = KafkaConsumerClass(**health_check_config)
-        print("✅ Kafka consumers initialized.")
-    except KafkaException as ke:
-        print(f"❌ Kafka initialization failed: {ke}")
-        raise
-    except Exception as e:
-        print(f"❌ Unexpected error during Kafka consumer setup: {e}")
-        raise
+    factory = KafkaConsumerFactory(config, logger)
+    utility = KafkaConsumerUtility(factory, logger)
 
-    def run_test_topic_consumer():
-        test_topic_consumer.consume_batches()
+    def run_consumer():
+        utility.run_consumer(
+            config=config,
+            message_processor=process_messages,
+            cancel_event=app.state.cancel_event
+        )
 
-    def run_health_check_consumer():
-        health_check_consumer.consume_batches()
-
-    threading.Thread(target=run_test_topic_consumer, daemon=True).start()
-    threading.Thread(target=run_health_check_consumer, daemon=True).start()
+    thread = threading.Thread(target=run_consumer, daemon=True)
+    thread.start()
+    app.state.consumer_thread = thread
+    logger.info("Kafka consumer thread started")
 
 @app.on_event("shutdown")
-def shutdown_event():
-    print("Shutting down... Kafka consumer will exit on next poll or timeout.")
-
+def shutdown_kafka_consumer():
+    logger.info("Shutting down Kafka consumer...")
+    app.state.cancel_event.set()
+    if app.state.consumer_thread:
+        app.state.consumer_thread.join()
+    logger.info("Kafka consumer thread stopped")
 
 @app.get("/health-check")
 def root():
