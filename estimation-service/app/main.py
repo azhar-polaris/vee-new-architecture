@@ -29,18 +29,20 @@ def process_messages(cancel_event, messages):
 
 @app.on_event("startup")
 def start_kafka_consumer():
-    config = KafkaConsumerConfig(
-        bootstrap_servers="localhost:9092",
+    config = KafkaConsumerConfig(     
         consumer_group_id="test-consumer-group",
         topics=["test-topic"],
         batch_size=1000,
         max_wait_ms=150,
         num_workers=10,
         channel_buffer_size=30,
-        security_protocol=None,
-        sasl_username=None,
-        sasl_password=None,
-        sasl_mechanism=None
+        
+
+        # security_protocol=None,
+        # bootstrap_servers="localhost:9092",
+        # sasl_username=None,
+        # sasl_password=None,
+        # sasl_mechanism=None
     )
 
     factory = KafkaConsumerFactory(config, logger)
