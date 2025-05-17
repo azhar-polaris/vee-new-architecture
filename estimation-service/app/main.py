@@ -7,16 +7,16 @@ from fastapi import FastAPI # type: ignore
 # Add the `src/` directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../app')))
 
+from utility_pkg import KafkaConsumerConfig, KafkaConsumerFactory, KafkaConsumerUtility
+
 from router.estimation_router import router as estimation_router
-from models.kafka_consumer.consumer_config import KafkaConsumerConfig
-from models.kafka_consumer.consumer_factory import KafkaConsumerFactory
-from models.kafka_consumer.consumer_utility import KafkaConsumerUtility
 
 app = FastAPI(title="Estimation Service")
 
 logger = logging.getLogger("KafkaTest")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
+
 
 # Shared state for threads and cancel event
 app.state.cancel_event = threading.Event()
@@ -30,6 +30,7 @@ def process_messages(cancel_event, messages):
 @app.on_event("startup")
 def start_kafka_consumer():
     config = KafkaConsumerConfig(     
+        bootstrap_servers="localhost:9092",
         consumer_group_id="test-consumer-group",
         topics=["test-topic"],
         batch_size=1000,

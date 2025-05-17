@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from common.models import SharedModel
+from fastapi import APIRouter # type: ignore
+from common_pkg import SharedModel
 
 router = APIRouter(prefix="/validate", tags=["Validation"])
 

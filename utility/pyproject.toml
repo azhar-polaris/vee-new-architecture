@@ -1,13 +1,14 @@
 [tool.poetry]
-name = "common"
+name = "utility"
 version = "0.1.0"
-description = "Shared models"
+description = "Shared models and utilities"
 authors = ["Azhar <azhar@polarisgrids.com>"]
-packages = [{ include = "common_pkg", from = "." }]
+packages = [{ include = "utility_pkg", from = "." }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "^2.11.4"
+confluent-kafka = "^2.10.0"
 
 [build-system]
 requires = ["poetry-core"]

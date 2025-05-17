@@ -1,6 +1,6 @@
 import time
-from fastapi import APIRouter, HTTPException
-from models.kafka_producer.producer import KafkaProducer
+from fastapi import APIRouter, HTTPException # type: ignore
+from utility_pkg import KafkaProducer
 from confluent_kafka import KafkaException # type: ignore
 
 router = APIRouter(prefix="/kafka", tags=["Kafka"])
