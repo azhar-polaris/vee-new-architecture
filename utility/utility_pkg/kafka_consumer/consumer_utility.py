@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import threading
 import queue
 import time
@@ -85,9 +87,15 @@ class KafkaConsumerUtility:
             try:
                 messages = msg_queue.get(timeout=1)
                 if messages:
-                    self.logger.info(f"Worker {threading.current_thread().name} received {len(messages)} messages")
-                    message_processor(cancel_event, messages)
-                    self.total_messages_processed += len(messages)
+                    try:
+                        if inspect.iscoroutinefunction(message_processor):
+                            # Run async message processor in event loop
+                            asyncio.run(message_processor(cancel_event, messages))
+                        else:
+                            message_processor(cancel_event, messages)
+                    except Exception as e:
+                        self.logger.error(f"Message processing error: {e}")
+
                     try:
                         consumer.commit_sync_batch(messages)
                     except Exception as e:

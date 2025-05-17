@@ -16,7 +16,7 @@ def test_kafka():
         producer = KafkaProducer(kafka_producer_config)
         messages = [
             f"Hello Kafka {i}".encode("utf-8")
-            for i in range(10000)
+            for i in range(100000)
         ]
         producer.produce_messages_in_batch("test-topic", messages)
 

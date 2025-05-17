@@ -1,4 +1,3 @@
-import logging
 import sys
 import os
 import threading
@@ -7,67 +6,24 @@ from fastapi import FastAPI # type: ignore
 # Add the `src/` directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../app')))
 
-from utility_pkg import KafkaConsumerConfig, KafkaConsumerFactory, KafkaConsumerUtility
-
 from router.estimation_router import router as estimation_router
+from consumers import start_profile_instant_consumer
 
 app = FastAPI(title="Estimation Service")
 
-logger = logging.getLogger("KafkaTest")
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
-
-
-# Shared state for threads and cancel event
 app.state.cancel_event = threading.Event()
-app.state.consumer_thread = None
+app.state.consumer_threads = []
 
-# Dummy message processor
-def process_messages(cancel_event, messages):
-    for msg in messages:
-        print(f"Received message: {msg.value().decode()} from {msg.topic()}")
 
 @app.on_event("startup")
-def start_kafka_consumer():
-    config = KafkaConsumerConfig(     
-        bootstrap_servers="localhost:9092",
-        consumer_group_id="test-consumer-group",
-        topics=["test-topic"],
-        batch_size=1000,
-        max_wait_ms=150,
-        num_workers=10,
-        channel_buffer_size=30,
-        
-
-        # security_protocol=None,
-        # bootstrap_servers="localhost:9092",
-        # sasl_username=None,
-        # sasl_password=None,
-        # sasl_mechanism=None
-    )
-
-    factory = KafkaConsumerFactory(config, logger)
-    utility = KafkaConsumerUtility(factory, logger)
-
-    def run_consumer():
-        utility.run_consumer(
-            config=config,
-            message_processor=process_messages,
-            cancel_event=app.state.cancel_event
-        )
-
-    thread = threading.Thread(target=run_consumer, daemon=True)
-    thread.start()
-    app.state.consumer_thread = thread
-    logger.info("Kafka consumer thread started")
+def startup_kafka_consumers():
+    app.state.consumer_threads.append(start_profile_instant_consumer(app.state.cancel_event))
 
 @app.on_event("shutdown")
-def shutdown_kafka_consumer():
-    logger.info("Shutting down Kafka consumer...")
+def shutdown_kafka_consumers():
     app.state.cancel_event.set()
-    if app.state.consumer_thread:
-        app.state.consumer_thread.join()
-    logger.info("Kafka consumer thread stopped")
+    for thread in app.state.consumer_threads:
+        thread.join()
 
 @app.get("/health-check")
 def root():
